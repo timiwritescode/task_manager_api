@@ -1,19 +1,23 @@
 from task_manager import api, db
 from task_manager.models import TaskModel
 from task_manager.util.util import get_filtered_result, match_priority_with_order
-from task_manager.url_arguments import (taskmanager_put_args, 
+from task_manager.url_arguments import (taskmanager_post_args, 
 taskmanager_update_args, 
 taskmanager_get_args)
 from flask_restful import Resource, abort, fields, marshal_with 
 from flask import jsonify
+import datetime
 
 resource_fields = {
     "id": fields.Integer,
     "title": fields.String,
-    "completed": fields.Boolean,
     "description": fields.String,
+    "is_completed": fields.Boolean,
     "priority": fields.String,
-    "order": fields.Integer
+    "order": fields.Integer,
+    "created_at": fields.String,
+    "due_at": fields.String,
+    "updated_at": fields.String
 }
  
 class TaskManager(Resource):
@@ -57,10 +61,13 @@ class TaskManagerList(Resource):
             
         page_data = [{'id': item.id, 
                          'title': item.title, 
-                         'completed': item.completed, 
+                         'is_completed': item.is_completed, 
                          'description':item.description,
                          'priority': item.priority,
-                         'order':item.order} for item in page] 
+                         'order':item.order,
+                         'created_at': item.created_at,
+                         'due_at': item.due_at,
+                         'updated_at': item.updated_at} for item in page] 
         
         filter_result = request_arguments['filter_by_completed'] 
         
@@ -70,23 +77,29 @@ class TaskManagerList(Resource):
         return page_data
     
     def post(self):
+        # get the number of tasks in the data base
         tasks = db.session.execute(db.select(TaskModel)).scalars()
         # tasks returns a generator with the 'select' db query 
         results_data = [task for task in tasks]
         new_task_id = len(results_data) 
-        request_arguments = taskmanager_put_args.parse_args() 
+        request_arguments = taskmanager_post_args.parse_args() 
         new_task = TaskModel(id=new_task_id, 
                              title=request_arguments['title'].lower(),
-                             completed=request_arguments['completed'],
+                             is_completed=request_arguments['completed'],
                              description=request_arguments['description'],
                              priority=match_priority_with_order(request_arguments['priority']),
-                             order=request_arguments['priority']
+                             order=request_arguments['priority'],
+                             created_at=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                             due_at=request_arguments['due_at'],
                              ) 
         
         db.session.add(new_task)
         db.session.commit()
         return "Successfully created new task", 201
 
+class NewUser(Resource):
+    def post(self):
+        pass
 
 api.add_resource(TaskManager, '/api/tasks/<int:task_id>')   
 api.add_resource(TaskManagerList, '/api/tasks')
