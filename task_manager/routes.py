@@ -47,22 +47,27 @@ class TaskManagerList(Resource):
     @marshal_with(resource_fields)
     def get(self):
         request_arguments = taskmanager_get_args.parse_args()
-        results = db.session.execute(db.select(TaskModel)).scalars()
+        page_number = request_arguments['page_number']
+        items_per_page = 20 if not request_arguments["items_per_page"] else request_arguments["items_per_page"]
+        
+        page = db.paginate(db.select(TaskModel), per_page=items_per_page, page=page_number)
         if request_arguments['order_by_priority']:
-            results = db.session.execute(db.select(TaskModel).order_by(TaskModel.order)).scalars()
-        results_data = [{'id': result.id, 
-                         'title': result.title, 
-                         'completed': result.completed, 
-                         'description':result.description,
-                         'priority': result.priority,
-                         'order': result.order} for result in results] 
+            page = db.paginate(db.select(TaskModel).order_by(TaskModel.order), per_page=items_per_page, page=page_number)
+
+            
+        page_data = [{'id': item.id, 
+                         'title': item.title, 
+                         'completed': item.completed, 
+                         'description':item.description,
+                         'priority': item.priority,
+                         'order':item.order} for item in page] 
         
         filter_result = request_arguments['filter_by_completed'] 
         
         if filter_result is not None:
             return get_filtered_result(filter_result)
          
-        return results_data
+        return page_data
     
     def post(self):
         tasks = db.session.execute(db.select(TaskModel)).scalars()
