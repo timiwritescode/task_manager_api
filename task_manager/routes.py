@@ -1,16 +1,19 @@
 from task_manager import api, db
 from task_manager.models import TaskModel
-from task_manager.util.util import get_filtered_result
+from task_manager.util.util import get_filtered_result, match_priority_with_order
 from task_manager.url_arguments import (taskmanager_put_args, 
 taskmanager_update_args, 
 taskmanager_get_args)
 from flask_restful import Resource, abort, fields, marshal_with 
+from flask import jsonify
 
 resource_fields = {
     "id": fields.Integer,
     "title": fields.String,
     "completed": fields.Boolean,
-    "description": fields.String
+    "description": fields.String,
+    "priority": fields.String,
+    "order": fields.Integer
 }
  
 class TaskManager(Resource):
@@ -43,16 +46,22 @@ class TaskManager(Resource):
 class TaskManagerList(Resource):
     @marshal_with(resource_fields)
     def get(self):
+        request_arguments = taskmanager_get_args.parse_args()
         results = db.session.execute(db.select(TaskModel)).scalars()
+        if request_arguments['order_by_priority']:
+            results = db.session.execute(db.select(TaskModel).order_by(TaskModel.order)).scalars()
         results_data = [{'id': result.id, 
                          'title': result.title, 
                          'completed': result.completed, 
-                         'description':result.description} for result in results] 
-        request_arguments = taskmanager_get_args.parse_args()
+                         'description':result.description,
+                         'priority': result.priority,
+                         'order': result.order} for result in results] 
+        
         filter_result = request_arguments['filter_by_completed'] 
         
         if filter_result is not None:
             return get_filtered_result(filter_result)
+         
         return results_data
     
     def post(self):
@@ -64,7 +73,10 @@ class TaskManagerList(Resource):
         new_task = TaskModel(id=new_task_id, 
                              title=request_arguments['title'].lower(),
                              completed=request_arguments['completed'],
-                             description=request_arguments['description']) 
+                             description=request_arguments['description'],
+                             priority=match_priority_with_order(request_arguments['priority']),
+                             order=request_arguments['priority']
+                             ) 
         
         db.session.add(new_task)
         db.session.commit()
