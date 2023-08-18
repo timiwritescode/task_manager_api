@@ -14,3 +14,5 @@ taskmanager_update_args.add_argument("description", type=str, help="description 
 taskmanager_get_args = reqparse.RequestParser()
 taskmanager_get_args.add_argument("filter_by_completed", type=bool, help='true or false')
 taskmanager_get_args.add_argument("order_by_priority", type=bool, help="true or false")
+taskmanager_get_args.add_argument("page_number", type=int, help='page number was not given', required=True)
+taskmanager_get_args.add_argument("items_per_page", type=int, help="number of items per page")
