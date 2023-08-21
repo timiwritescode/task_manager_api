@@ -1,12 +1,16 @@
 from task_manager import api, db
-from task_manager.models import TaskModel
+from task_manager.models import TaskModel, User
 from task_manager.util.util import get_filtered_result, match_priority_with_order
 from task_manager.url_arguments import (taskmanager_post_args, 
 taskmanager_update_args, 
-taskmanager_get_args)
+taskmanager_get_args,
+newuser_post_args)
 from flask_restful import Resource, abort, fields, marshal_with 
 from flask import jsonify
+from sqlalchemy.exc import IntegrityError
+from task_manager.errors import EmailAlreadyExistsError, InvalidEmailError   
 import datetime
+
 
 resource_fields = {
     "id": fields.Integer,
@@ -99,8 +103,22 @@ class TaskManagerList(Resource):
 
 class NewUser(Resource):
     def post(self):
-        pass
+        users = db.session.execute(db.select(User)).scalars()
 
-api.add_resource(TaskManager, '/api/tasks/<int:task_id>')   
-api.add_resource(TaskManagerList, '/api/tasks')
+        try:
+            users_data = [user for user in users]
+            new_user_id = len(users_data)
+            request_arguments = newuser_post_args.parse_args()
+            new_user = User(id=new_user_id,
+                            username=request_arguments['username'],
+                            email=request_arguments['email'])
+            
+            db.session.add(new_user)
+            db.session.commit()
+            return "New user successfully added", 201
+        except ValueError:
+            raise InvalidEmailError("Email incorrect")         
+        except IntegrityError:
+            raise EmailAlreadyExistsError("Email already exists")
 
+# new end points - /api/user_id/tasks?token=generated_token 

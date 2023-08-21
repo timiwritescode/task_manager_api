@@ -12,7 +12,8 @@ class User(db.Model):
     @validates('email')
     def validate_email(self, key, email):
         if not email:
-            raise ValueError("Email address is required")
+            raise 
+        ("Email address is required")
         
         try:
             email_validator.validate_email(email)

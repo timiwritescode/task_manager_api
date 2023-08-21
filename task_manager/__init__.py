@@ -15,3 +15,4 @@ migrate = Migrate(app, db)
 
 
 from task_manager import routes
+from task_manager import urls
